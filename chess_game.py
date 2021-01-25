@@ -28,25 +28,57 @@ RED = (255, 0, 0)
 YELLOW = (200, 194, 114)
 GREEN = (15, 22, 17)
 
+# function to setup chess board tiles
+def setup_chess_board(chess_game: chess.Board, screen: pygame.surface, flip_board: bool, chess_move: str):
+    tile_outline = pygame.surface.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    draw_chess_board(chess_game, tile_outline, flip_board, chess_move)
+    #draw_chess_outline(tile_outline, YELLOW)
+
+    screen.blit(tile_outline, (0, 0))
 
 # function to draw chessboard
-def draw_chess_board(screen: pygame.surface, flipped: bool):
-    screen.fill(GREEN)
-    chess_color = WHITE
-
+def draw_chess_board(chess_game: chess.Board, screen: pygame.surface, flipped: bool, current_move: str):
+    
+    if not current_move:
+        pass
+    
     if flipped:
         screen.fill(WHITE)
-        chess_color = GREEN
+        chess_color_1 = GREEN
+        chess_color_2 = WHITE
+    else:
+        screen.fill(GREEN)
+        chess_color_1 = WHITE
+        chess_color_2 = GREEN
+
+    chess_color_3 = YELLOW
+
 
     for width in range(0, 8):
         for height in range(0, 8):
-            if width % 2 and height % 2:
-                rect = ((width * TILE_SIZE, height * TILE_SIZE), (TILE_SIZE, TILE_SIZE))
-                pygame.draw.rect(screen, chess_color, rect)
+            rect = ((width * TILE_SIZE, height * TILE_SIZE), (TILE_SIZE, TILE_SIZE))
+            
+            if width %  2 and height % 2:
+                pygame.draw.rect(screen, chess_color_1, rect)
 
             if not height % 2 and not width % 2:
-                rect = ((width * TILE_SIZE, height * TILE_SIZE), (TILE_SIZE, TILE_SIZE))
-                pygame.draw.rect(screen, chess_color, rect)
+                pygame.draw.rect(screen, chess_color_1, rect)
+
+    if len(current_move) == 2:
+        allowed_moves = check_move(chess_game, current_move)
+
+        next_tiles = []
+        for i in allowed_moves:
+            next_tiles.append(i[2:4])
+
+        next_tile_pos = []
+        for i in next_tiles:
+            next_tile_pos = chess.parse_square(i)
+
+            rect = (((int(next_tile_pos) % 8 )* TILE_SIZE, SCREEN_HEIGHT - ((int(next_tile_pos) // 8) + 1) * TILE_SIZE), (TILE_SIZE, TILE_SIZE))
+            pygame.draw.rect(screen, chess_color_3, rect)
+
+
 
 # function to draw tile outline
 def draw_chess_outline(screen: pygame.surface, outline_color):
@@ -63,13 +95,7 @@ def draw_chess_outline(screen: pygame.surface, outline_color):
     pygame.draw.line(screen, outline_color, (SCREEN_WIDTH-1, 0), (SCREEN_WIDTH-1, SCREEN_HEIGHT-1), line_width)
 
 
-# function to setup chess board tiles
-def setup_chess_board(screen: pygame.surface, flip_board: bool):
-    tile_outline = pygame.surface.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-    draw_chess_board(tile_outline, flip_board)
-    #draw_chess_outline(tile_outline, YELLOW)
 
-    screen.blit(tile_outline, (0, 0))
 
 # function to get current chessboard state
 def get_chess_state(chess_game: chess.Board):
@@ -173,6 +199,27 @@ def print_valid_moves(chess_game: chess.Board):
     for move in chess_game.legal_moves:
         print(chess_game.uci(move))
 
+'''
+    arguments: chess_game < chess.Board() >
+    use: returns a list of valid moves
+'''
+def get_valid_moves(chess_game: chess.Board):
+    valid_moves = []
+    for move in chess_game.legal_moves:
+        valid_moves.append(chess_game.uci(move))
+
+    return valid_moves
+
+
+'''
+    arguments: chess_game < chess.Board() >
+    use: checks if move is valid
+'''
+def check_move(chess_game: chess.Board, move: str):
+    valid_moves = get_valid_moves(chess_game)    
+    find_move = [s for s in valid_moves if move in s[:2]]
+    
+    return find_move
 
 
 #------- MAIN --------
@@ -185,11 +232,10 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("CHESS")
 
 # setup chess board design
-setup_chess_board(screen, False)
+setup_chess_board(chess_game, screen, False, "")
 
 # get current chess state
 chess_arr = get_chess_state(chess_game)
-print(chess_arr)
 
 draw_chess_state(chess_game)
 
@@ -204,29 +250,36 @@ while(run):
         if event.type == pygame.QUIT:
             run = False
 
-
         if event.type == pygame.MOUSEBUTTONDOWN:
-
-            print(chess_move, " " + str(len(chess_move)))
-            
             x, y = event.pos
             chess_move = chess_move + get_chess_tile(x, y)
 
+            try:
+                move = chess.Move.from_uci(chess_move)
+            except:
+                move = chess.Move.null()
+
+            if len(chess_move) == 2:
+
+                if not check_move(chess_game, chess_move):
+                    chess_move = ""
+
+                setup_chess_board(chess_game, screen, False, chess_move)
+                draw_chess_state(chess_game)
+        
+
             if len(chess_move) >= 4:
+                valid_moves = get_valid_moves(chess_game)
 
-                try:
-                    move = chess.Move.from_uci(chess_move)
-                except:
-                    move = chess.Move.null()
-
-                if move in chess_game.legal_moves: 
+                if str(move) in valid_moves: 
                     chess_game.push(move)
-                    setup_chess_board(screen, False)
-                    draw_chess_state(chess_game)
-                
-                chess_move = ""
 
-            
+                if str(move) +'q' in valid_moves: 
+                    chess_game.push(chess.Move.from_uci(str(move) + 'q'))
+
+                chess_move = ""
+                setup_chess_board(chess_game, screen, False, chess_move)
+                draw_chess_state(chess_game)
         
     pygame.display.update()
 
