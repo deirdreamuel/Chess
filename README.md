@@ -1,4 +1,4 @@
-# chess in Python
+# Chess
 
 ![Chess Game](/images/readme_img_1.png)
 
