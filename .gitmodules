@@ -1,0 +1,3 @@
+[submodule "ChessClient"]
+	path = ChessClient
+	url = https://github.com/deirdreamuel/ChessClient.git
